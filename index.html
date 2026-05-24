@@ -33,6 +33,9 @@
         >
           Menu
         </button>
+        <button class="admin-entry-btn" type="button" id="admin-entry-btn">
+          Admin
+        </button>
         <nav class="main-nav" id="main-nav" aria-label="Navegación principal">
           <a href="#servicios">Servicios</a>
           <a href="#productos">Productos</a>
@@ -118,6 +121,7 @@
             <article class="product-card reveal delay-1">
               <div class="product-image-wrap">
                 <img
+                  id="product1-image"
                   class="product-image"
                   src="productos/1.jpg"
                   alt="Máquina de anestesia hospitalaria"
@@ -125,8 +129,8 @@
                 />
               </div>
               <div class="product-copy">
-                <h3>Máquina de Anestesia</h3>
-                <p>
+                <h3 id="product1-title">Máquina de Anestesia</h3>
+                <p id="product1-description">
                   Equipo para procedimientos quirúrgicos con monitoreo integrado,
                   ideal para clínicas y centros médicos.
                 </p>
@@ -136,6 +140,7 @@
             <article class="product-card reveal delay-2">
               <div class="product-image-wrap">
                 <img
+                  id="product2-image"
                   class="product-image"
                   src="productos/2.jpg"
                   alt="Lámpara quirúrgica de techo"
@@ -143,14 +148,50 @@
                 />
               </div>
               <div class="product-copy">
-                <h3>Lámpara Quirúrgica LED</h3>
-                <p>
+                <h3 id="product2-title">Lámpara Quirúrgica LED</h3>
+                <p id="product2-description">
                   Iluminación de alta precisión para salas de cirugía y áreas
                   de procedimientos médicos.
                 </p>
               </div>
             </article>
           </div>
+
+          <section class="products-admin" id="products-admin" hidden>
+            <h3>Panel Admin: Editar Productos</h3>
+            <form id="products-form" class="products-form">
+              <div class="product-edit-card">
+                <h4>Producto 1</h4>
+                <label for="p1-title">Titulo</label>
+                <input id="p1-title" type="text" required />
+                <label for="p1-description">Descripcion</label>
+                <textarea id="p1-description" rows="3" required></textarea>
+                <label for="p1-image">Ruta de imagen</label>
+                <input id="p1-image" type="text" required />
+              </div>
+
+              <div class="product-edit-card">
+                <h4>Producto 2</h4>
+                <label for="p2-title">Titulo</label>
+                <input id="p2-title" type="text" required />
+                <label for="p2-description">Descripcion</label>
+                <textarea id="p2-description" rows="3" required></textarea>
+                <label for="p2-image">Ruta de imagen</label>
+                <input id="p2-image" type="text" required />
+              </div>
+
+              <div class="admin-actions">
+                <button class="btn btn-primary" type="submit">Guardar cambios</button>
+                <button class="btn btn-ghost" type="button" id="admin-logout-btn">
+                  Cerrar admin
+                </button>
+              </div>
+            </form>
+            <p class="admin-note">
+              Los cambios se guardan en este navegador. Para publicarlos en internet,
+              sube los archivos actualizados al hosting.
+            </p>
+          </section>
         </div>
       </section>
 
@@ -193,7 +234,7 @@
             Cuéntanos qué necesitas y te contactamos para una evaluación técnica.
           </p>
           <div class="contact-links">
-            <a class="btn btn-primary" href="tel:+51999999999">Llamar ahora</a>
+            <a class="btn btn-primary" href="tel:+51916136979">Llamar ahora</a>
             <a class="btn btn-ghost" href="mailto:contacto@marfesservice.com">
               Escribir correo
             </a>
@@ -215,6 +256,28 @@
         <p>© <span id="year"></span> Marfes Service. Todos los derechos reservados.</p>
       </div>
     </footer>
+
+    <div class="admin-modal" id="admin-modal" hidden>
+      <div class="admin-modal-card" role="dialog" aria-modal="true" aria-labelledby="admin-title">
+        <h3 id="admin-title">Ingreso administrador</h3>
+        <form id="admin-login-form" class="admin-login-form">
+          <label for="admin-username">Usuario</label>
+          <input id="admin-username" type="text" autocomplete="username" required />
+          <label for="admin-password">Password</label>
+          <input
+            id="admin-password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+          <p id="admin-error" class="admin-error" aria-live="polite"></p>
+          <div class="admin-actions">
+            <button class="btn btn-primary" type="submit">Entrar</button>
+            <button class="btn btn-ghost" type="button" id="admin-cancel-btn">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <script type="module" src="script.js"></script>
   </body>
