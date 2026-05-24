@@ -1,0 +1,25 @@
+<svg width="640" height="220" viewBox="0 0 640 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="beam" x1="110" y1="122" x2="110" y2="196" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8ED9EF"/>
+      <stop offset="1" stop-color="#76C8E2"/>
+    </linearGradient>
+  </defs>
+
+  <g opacity="0.46" stroke="#D6EEF7" stroke-width="8" stroke-linecap="round">
+    <path d="M15 165L77 143"/>
+    <path d="M20 184L81 162"/>
+    <path d="M31 201L90 178"/>
+    <path d="M205 165L143 143"/>
+    <path d="M200 184L139 162"/>
+    <path d="M189 201L130 178"/>
+  </g>
+
+  <path d="M110 57C95 27 60 26 45 53C31 79 41 113 72 137L110 167L148 137C179 113 189 79 175 53C160 26 125 27 110 57Z" stroke="#8A8FB5" stroke-width="8" fill="none"/>
+
+  <circle cx="110" cy="73" r="20" fill="#95DDF1"/>
+  <path d="M110 98L77 164H143L110 98Z" fill="url(#beam)"/>
+
+  <text x="258" y="96" fill="#76C8E2" font-size="64" font-family="Sora, Arial, sans-serif" font-weight="700" letter-spacing="1.5">MARFE'S</text>
+  <text x="258" y="170" fill="#76C8E2" font-size="64" font-family="Sora, Arial, sans-serif" font-weight="700" letter-spacing="1.5">SERVICE</text>
+</svg>
