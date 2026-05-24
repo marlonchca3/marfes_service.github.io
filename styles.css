@@ -123,6 +123,19 @@ a {
   transform: translateY(-1px);
 }
 
+.admin-user-photo {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 2px solid rgba(121, 202, 228, 0.55);
+  background: #fff;
+}
+
+.admin-user-photo[hidden] {
+  display: none;
+}
+
 .main-nav {
   display: flex;
   align-items: center;
@@ -474,6 +487,10 @@ a {
   place-items: center;
   padding: 1rem;
   background: rgba(14, 31, 46, 0.45);
+}
+
+.admin-modal[hidden] {
+  display: none;
 }
 
 .admin-modal-card {

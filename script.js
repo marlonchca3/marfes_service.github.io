@@ -3,6 +3,13 @@ import {
   getAnalytics,
   isSupported,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics.js";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBMzzP0U4s22f0V4IxO2av1PrJez3KJwqs",
@@ -15,6 +22,8 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
 // Analytics only runs in supported browser environments.
 isSupported()
@@ -31,16 +40,16 @@ const yearEl = document.getElementById("year");
 const menuToggleEl = document.querySelector(".menu-toggle");
 const mainNavEl = document.getElementById("main-nav");
 const adminEntryBtnEl = document.getElementById("admin-entry-btn");
+const adminUserPhotoEl = document.getElementById("admin-user-photo");
 const adminModalEl = document.getElementById("admin-modal");
 const adminLoginFormEl = document.getElementById("admin-login-form");
+const adminGoogleBtnEl = document.getElementById("admin-google-btn");
 const adminCancelBtnEl = document.getElementById("admin-cancel-btn");
 const adminErrorEl = document.getElementById("admin-error");
 const adminLogoutBtnEl = document.getElementById("admin-logout-btn");
 const productsAdminEl = document.getElementById("products-admin");
 const productsFormEl = document.getElementById("products-form");
 
-const ADMIN_USER = "admin";
-const ADMIN_PASSWORD = "admin";
 const ADMIN_SESSION_KEY = "marfes_admin_active";
 const PRODUCTS_STORAGE_KEY = "marfes_products_data";
 
@@ -53,6 +62,7 @@ const productElements = [
       title: document.getElementById("p1-title"),
       description: document.getElementById("p1-description"),
       image: document.getElementById("p1-image"),
+      imageFile: document.getElementById("p1-image-file"),
     },
   },
   {
@@ -63,6 +73,7 @@ const productElements = [
       title: document.getElementById("p2-title"),
       description: document.getElementById("p2-description"),
       image: document.getElementById("p2-image"),
+      imageFile: document.getElementById("p2-image-file"),
     },
   },
 ];
@@ -130,13 +141,22 @@ function loadProductsData() {
   }
 }
 
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("No se pudo leer el archivo de imagen"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function setAdminMode(enabled) {
   if (!productsAdminEl || !adminEntryBtnEl) {
     return;
   }
 
   productsAdminEl.hidden = !enabled;
-  adminEntryBtnEl.textContent = enabled ? "Admin activo" : "Admin";
+  adminEntryBtnEl.textContent = enabled ? "Cerrar sesion" : "Iniciar sesion";
   adminEntryBtnEl.setAttribute("aria-pressed", String(enabled));
 
   if (enabled) {
@@ -144,6 +164,35 @@ function setAdminMode(enabled) {
   } else {
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
   }
+}
+
+function setAdminUserPhoto(user) {
+  if (!adminUserPhotoEl) {
+    return;
+  }
+
+  const photoUrl = user && user.photoURL ? user.photoURL.trim() : "";
+  const displayName = user && user.displayName ? user.displayName.trim() : "usuario";
+
+  if (!photoUrl) {
+    adminUserPhotoEl.hidden = true;
+    adminUserPhotoEl.removeAttribute("src");
+    adminUserPhotoEl.setAttribute("alt", "Foto de perfil");
+    return;
+  }
+
+  adminUserPhotoEl.setAttribute("src", photoUrl);
+  adminUserPhotoEl.setAttribute("alt", `Foto de ${displayName}`);
+  adminUserPhotoEl.hidden = false;
+}
+
+async function logoutAdminSession() {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.warn("No se pudo cerrar sesion de Google:", error);
+  }
+  setAdminMode(false);
 }
 
 function toggleAdminModal(show) {
@@ -157,8 +206,19 @@ function toggleAdminModal(show) {
   }
 }
 
+if (adminModalEl) {
+  adminModalEl.hidden = true;
+}
+
 loadProductsData();
-setAdminMode(sessionStorage.getItem(ADMIN_SESSION_KEY) === "1");
+setAdminMode(false);
+setAdminUserPhoto(null);
+
+onAuthStateChanged(auth, (user) => {
+  const isActive = Boolean(user);
+  setAdminMode(isActive);
+  setAdminUserPhoto(user);
+});
 
 if (menuToggleEl && mainNavEl) {
   menuToggleEl.addEventListener("click", () => {
@@ -177,13 +237,10 @@ if (menuToggleEl && mainNavEl) {
 }
 
 if (adminEntryBtnEl) {
-  adminEntryBtnEl.addEventListener("click", () => {
+  adminEntryBtnEl.addEventListener("click", async () => {
     const active = sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
     if (active) {
-      const productosSectionEl = document.getElementById("productos");
-      if (productosSectionEl) {
-        productosSectionEl.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+      await logoutAdminSession();
       return;
     }
     toggleAdminModal(true);
@@ -207,30 +264,64 @@ if (adminModalEl) {
 if (adminLoginFormEl) {
   adminLoginFormEl.addEventListener("submit", (event) => {
     event.preventDefault();
+  });
+}
 
-    const usernameEl = document.getElementById("admin-username");
-    const passwordEl = document.getElementById("admin-password");
-    const username = usernameEl ? usernameEl.value.trim() : "";
-    const password = passwordEl ? passwordEl.value : "";
+if (adminGoogleBtnEl) {
+  adminGoogleBtnEl.addEventListener("click", async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
 
-    if (username === ADMIN_USER && password === ADMIN_PASSWORD) {
       setAdminMode(true);
       toggleAdminModal(false);
-
-      if (usernameEl) {
-        usernameEl.value = "";
+    } catch (error) {
+      console.warn("Error al iniciar sesion con Google:", error);
+      if (adminErrorEl) {
+        adminErrorEl.textContent = "No se pudo iniciar sesion con Google";
       }
-      if (passwordEl) {
-        passwordEl.value = "";
-      }
-      return;
-    }
-
-    if (adminErrorEl) {
-      adminErrorEl.textContent = "Credenciales incorrectas";
     }
   });
 }
+
+productElements.forEach((product) => {
+  const imageFileInput = product.fields.imageFile;
+  if (!imageFileInput) {
+    return;
+  }
+
+  imageFileInput.addEventListener("change", async () => {
+    const selectedFile = imageFileInput.files && imageFileInput.files[0];
+    if (!selectedFile) {
+      return;
+    }
+
+    if (!selectedFile.type.startsWith("image/")) {
+      if (adminErrorEl) {
+        adminErrorEl.textContent = "Selecciona un archivo de imagen valido";
+      }
+      imageFileInput.value = "";
+      return;
+    }
+
+    try {
+      const imageDataUrl = await fileToDataUrl(selectedFile);
+      if (product.fields.image) {
+        product.fields.image.value = imageDataUrl;
+      }
+      if (product.image) {
+        product.image.setAttribute("src", imageDataUrl);
+      }
+      if (adminErrorEl) {
+        adminErrorEl.textContent = "";
+      }
+    } catch (error) {
+      console.warn("Error al cargar imagen local:", error);
+      if (adminErrorEl) {
+        adminErrorEl.textContent = "No se pudo cargar la imagen seleccionada";
+      }
+    }
+  });
+});
 
 if (productsFormEl) {
   productsFormEl.addEventListener("submit", (event) => {
@@ -248,7 +339,7 @@ if (productsFormEl) {
 }
 
 if (adminLogoutBtnEl) {
-  adminLogoutBtnEl.addEventListener("click", () => {
-    setAdminMode(false);
+  adminLogoutBtnEl.addEventListener("click", async () => {
+    await logoutAdminSession();
   });
 }

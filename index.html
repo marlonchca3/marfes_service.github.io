@@ -34,8 +34,14 @@
           Menu
         </button>
         <button class="admin-entry-btn" type="button" id="admin-entry-btn">
-          Admin
+          Iniciar sesion
         </button>
+        <img
+          class="admin-user-photo"
+          id="admin-user-photo"
+          alt="Foto de perfil"
+          hidden
+        />
         <nav class="main-nav" id="main-nav" aria-label="Navegación principal">
           <a href="#servicios">Servicios</a>
           <a href="#productos">Productos</a>
@@ -166,8 +172,10 @@
                 <input id="p1-title" type="text" required />
                 <label for="p1-description">Descripcion</label>
                 <textarea id="p1-description" rows="3" required></textarea>
-                <label for="p1-image">Ruta de imagen</label>
+                <label for="p1-image">Ruta o URL de imagen</label>
                 <input id="p1-image" type="text" required />
+                <label for="p1-image-file">Subir imagen desde tu PC</label>
+                <input id="p1-image-file" type="file" accept="image/*" />
               </div>
 
               <div class="product-edit-card">
@@ -176,15 +184,15 @@
                 <input id="p2-title" type="text" required />
                 <label for="p2-description">Descripcion</label>
                 <textarea id="p2-description" rows="3" required></textarea>
-                <label for="p2-image">Ruta de imagen</label>
+                <label for="p2-image">Ruta o URL de imagen</label>
                 <input id="p2-image" type="text" required />
+                <label for="p2-image-file">Subir imagen desde tu PC</label>
+                <input id="p2-image-file" type="file" accept="image/*" />
               </div>
 
               <div class="admin-actions">
                 <button class="btn btn-primary" type="submit">Guardar cambios</button>
-                <button class="btn btn-ghost" type="button" id="admin-logout-btn">
-                  Cerrar admin
-                </button>
+                <button class="btn btn-ghost" type="button" id="admin-logout-btn">Cerrar sesion</button>
               </div>
             </form>
             <p class="admin-note">
@@ -261,18 +269,12 @@
       <div class="admin-modal-card" role="dialog" aria-modal="true" aria-labelledby="admin-title">
         <h3 id="admin-title">Ingreso administrador</h3>
         <form id="admin-login-form" class="admin-login-form">
-          <label for="admin-username">Usuario</label>
-          <input id="admin-username" type="text" autocomplete="username" required />
-          <label for="admin-password">Password</label>
-          <input
-            id="admin-password"
-            type="password"
-            autocomplete="current-password"
-            required
-          />
+          <p class="admin-login-hint">Acceso con cualquier cuenta de Google.</p>
+          <button class="btn btn-primary" type="button" id="admin-google-btn">
+            Continuar con Google
+          </button>
           <p id="admin-error" class="admin-error" aria-live="polite"></p>
           <div class="admin-actions">
-            <button class="btn btn-primary" type="submit">Entrar</button>
             <button class="btn btn-ghost" type="button" id="admin-cancel-btn">Cancelar</button>
           </div>
         </form>
