@@ -76,6 +76,7 @@ a {
 }
 
 .nav-wrap {
+  position: relative;
   min-height: 74px;
   display: flex;
   align-items: center;
@@ -92,6 +93,17 @@ a {
   width: 230px;
   height: auto;
   display: block;
+}
+
+.menu-toggle {
+  display: none;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  padding: 0.52rem 0.78rem;
 }
 
 .main-nav {
@@ -240,6 +252,45 @@ a {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.products-grid {
+  display: grid;
+  gap: 1.15rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.product-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.product-image-wrap {
+  aspect-ratio: 4 / 3;
+  background: linear-gradient(140deg, #f8fdff, #e5f4fb);
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.product-copy {
+  padding: 1rem 1rem 1.2rem;
+}
+
+.product-copy h3 {
+  margin-bottom: 0.45rem;
+  font-size: 1.18rem;
+}
+
+.product-copy p {
+  color: var(--ink-soft);
+}
+
 .service-card {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -362,6 +413,10 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .products-grid {
+    grid-template-columns: 1fr;
+  }
+
   .cards-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -369,15 +424,64 @@ a {
 
 @media (max-width: 680px) {
   .brand-logo {
-    width: 178px;
+    width: 165px;
+  }
+
+  .menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .main-nav {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: min(250px, 80vw);
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 0.55rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
     display: none;
+  }
+
+  .main-nav.is-open {
+    display: flex;
+  }
+
+  .main-nav a {
+    width: 100%;
+    text-align: left;
+    padding: 0.6rem 0.7rem;
   }
 
   .section {
     padding: 4.2rem 0;
+  }
+
+  .hero {
+    padding-top: 4rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+  }
+
+  .hero-actions .btn,
+  .contact-links .btn {
+    width: 100%;
+  }
+
+  .hero-card,
+  .service-card,
+  .product-card,
+  .stat,
+  .contact-box {
+    border-radius: 16px;
   }
 
   .cards-grid {
