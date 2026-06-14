@@ -683,10 +683,10 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 62px;
-  height: 62px;
-  min-width: 62px;
-  min-height: 62px;
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  min-height: 56px;
   aspect-ratio: 1 / 1;
   padding: 0;
   line-height: 0;
@@ -701,8 +701,8 @@ a {
 }
 
 .floating-whatsapp svg {
-  width: 33px;
-  height: 33px;
+  width: 29px;
+  height: 29px;
   fill: currentColor;
 }
 
@@ -973,13 +973,13 @@ a {
   .floating-whatsapp {
     right: 0.74rem;
     bottom: 0.74rem;
-    width: 58px;
-    height: 58px;
+    width: 52px;
+    height: 52px;
   }
 
   .floating-whatsapp svg {
-    width: 31px;
-    height: 31px;
+    width: 27px;
+    height: 27px;
   }
 }
 
@@ -1020,17 +1020,3 @@ a {
   }
 }
 
-@media (min-width: 761px) {
-  .floating-whatsapp {
-    width: 66px;
-    height: 66px;
-    min-width: 66px;
-    min-height: 66px;
-    border-radius: 999px;
-  }
-
-  .floating-whatsapp svg {
-    width: 34px;
-    height: 34px;
-  }
-}
