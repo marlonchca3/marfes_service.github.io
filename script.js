@@ -52,9 +52,16 @@ const productsFormEl = document.getElementById("products-form");
 
 const ADMIN_SESSION_KEY = "marfes_admin_active";
 const PRODUCTS_STORAGE_KEY = "marfes_products_data";
+const PRODUCT_PLACEHOLDER_IMAGE = "assets/logo-marfes.svg";
+const OPTIONAL_PRODUCTS_START_INDEX = 2;
+const OPTIONAL_PRODUCT_DEFAULT_TITLE = "Nuevo producto";
+const OPTIONAL_PRODUCT_DEFAULT_DESCRIPTION = "Completa los datos desde el panel admin.";
+
+let isAdminMode = false;
 
 const productElements = [
   {
+    card: document.getElementById("product1-card"),
     title: document.getElementById("product1-title"),
     description: document.getElementById("product1-description"),
     image: document.getElementById("product1-image"),
@@ -66,6 +73,7 @@ const productElements = [
     },
   },
   {
+    card: document.getElementById("product2-card"),
     title: document.getElementById("product2-title"),
     description: document.getElementById("product2-description"),
     image: document.getElementById("product2-image"),
@@ -76,6 +84,42 @@ const productElements = [
       imageFile: document.getElementById("p2-image-file"),
     },
   },
+  {
+    card: document.getElementById("product3-card"),
+    title: document.getElementById("product3-title"),
+    description: document.getElementById("product3-description"),
+    image: document.getElementById("product3-image"),
+    fields: {
+      title: document.getElementById("p3-title"),
+      description: document.getElementById("p3-description"),
+      image: document.getElementById("p3-image"),
+      imageFile: document.getElementById("p3-image-file"),
+    },
+  },
+  {
+    card: document.getElementById("product4-card"),
+    title: document.getElementById("product4-title"),
+    description: document.getElementById("product4-description"),
+    image: document.getElementById("product4-image"),
+    fields: {
+      title: document.getElementById("p4-title"),
+      description: document.getElementById("p4-description"),
+      image: document.getElementById("p4-image"),
+      imageFile: document.getElementById("p4-image-file"),
+    },
+  },
+  {
+    card: document.getElementById("product5-card"),
+    title: document.getElementById("product5-title"),
+    description: document.getElementById("product5-description"),
+    image: document.getElementById("product5-image"),
+    fields: {
+      title: document.getElementById("p5-title"),
+      description: document.getElementById("p5-description"),
+      image: document.getElementById("p5-image"),
+      imageFile: document.getElementById("p5-image-file"),
+    },
+  },
 ];
 
 if (yearEl) {
@@ -83,11 +127,72 @@ if (yearEl) {
 }
 
 function getProductsFromDom() {
-  return productElements.map((product) => ({
-    title: product.title ? product.title.textContent.trim() : "",
-    description: product.description ? product.description.textContent.trim() : "",
-    image: product.image ? product.image.getAttribute("src") : "",
-  }));
+  return productElements.map((product, index) => {
+    const title = product.title ? product.title.textContent.trim() : "";
+    const description = product.description ? product.description.textContent.trim() : "";
+    const image = product.image ? product.image.getAttribute("src") : PRODUCT_PLACEHOLDER_IMAGE;
+
+    // Optional products start hidden in markup and should remain empty until admin configures them.
+    if (
+      index >= OPTIONAL_PRODUCTS_START_INDEX &&
+      product.card &&
+      product.card.hasAttribute("hidden")
+    ) {
+      return {
+        title: "",
+        description: "",
+        image: "",
+      };
+    }
+
+    return {
+      title,
+      description,
+      image,
+    };
+  });
+}
+
+function hasVisibleProductData(item, index) {
+  if (index < OPTIONAL_PRODUCTS_START_INDEX) {
+    return true;
+  }
+
+  const title = (item.title || "").trim();
+  const description = (item.description || "").trim();
+  const image = (item.image || "").trim();
+
+  return Boolean(
+    title &&
+      description &&
+      image &&
+      title !== OPTIONAL_PRODUCT_DEFAULT_TITLE &&
+      description !== OPTIONAL_PRODUCT_DEFAULT_DESCRIPTION &&
+      image !== PRODUCT_PLACEHOLDER_IMAGE,
+  );
+}
+
+function mergeProductsData(baseProducts, incomingProducts) {
+  return baseProducts.map((base, index) => {
+    const incoming = incomingProducts[index] || {};
+    return {
+      title: typeof incoming.title === "string" ? incoming.title.trim() : base.title,
+      description:
+        typeof incoming.description === "string"
+          ? incoming.description.trim()
+          : base.description,
+      image: typeof incoming.image === "string" ? incoming.image.trim() : base.image,
+    };
+  });
+}
+
+function updateProductCardVisibility(product, item) {
+  if (!product.card) {
+    return;
+  }
+
+  const productIndex = productElements.indexOf(product);
+  product.card.hidden = !(isAdminMode || hasVisibleProductData(item, productIndex));
 }
 
 function applyProductsData(productsData) {
@@ -97,25 +202,33 @@ function applyProductsData(productsData) {
       return;
     }
 
+    const normalizedItem = {
+      title: item.title || "",
+      description: item.description || "",
+      image: item.image || PRODUCT_PLACEHOLDER_IMAGE,
+    };
+
     if (product.title) {
-      product.title.textContent = item.title;
+      product.title.textContent = normalizedItem.title;
     }
     if (product.description) {
-      product.description.textContent = item.description;
+      product.description.textContent = normalizedItem.description;
     }
     if (product.image) {
-      product.image.setAttribute("src", item.image);
+      product.image.setAttribute("src", normalizedItem.image);
     }
 
     if (product.fields.title) {
-      product.fields.title.value = item.title;
+      product.fields.title.value = normalizedItem.title;
     }
     if (product.fields.description) {
-      product.fields.description.value = item.description;
+      product.fields.description.value = normalizedItem.description;
     }
     if (product.fields.image) {
-      product.fields.image.value = item.image;
+      product.fields.image.value = item.image || "";
     }
+
+    updateProductCardVisibility(product, normalizedItem);
   });
 }
 
@@ -130,11 +243,13 @@ function loadProductsData() {
 
   try {
     const parsed = JSON.parse(rawData);
-    if (!Array.isArray(parsed) || parsed.length !== productElements.length) {
+    if (!Array.isArray(parsed)) {
       applyProductsData(fallbackData);
       return;
     }
-    applyProductsData(parsed);
+
+    const mergedProducts = mergeProductsData(fallbackData, parsed);
+    applyProductsData(mergedProducts);
   } catch (error) {
     console.warn("No se pudo leer productos guardados:", error);
     applyProductsData(fallbackData);
@@ -155,9 +270,17 @@ function setAdminMode(enabled) {
     return;
   }
 
+  isAdminMode = enabled;
   productsAdminEl.hidden = !enabled;
   adminEntryBtnEl.textContent = enabled ? "Cerrar sesion" : "Iniciar sesion";
   adminEntryBtnEl.setAttribute("aria-pressed", String(enabled));
+
+  const currentProducts = productElements.map((product) => ({
+    title: product.fields.title ? product.fields.title.value.trim() : "",
+    description: product.fields.description ? product.fields.description.value.trim() : "",
+    image: product.fields.image ? product.fields.image.value.trim() : "",
+  }));
+  applyProductsData(currentProducts);
 
   if (enabled) {
     sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
