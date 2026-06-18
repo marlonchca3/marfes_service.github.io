@@ -10,6 +10,11 @@ import {
   signInWithPopup,
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBMzzP0U4s22f0V4IxO2av1PrJez3KJwqs",
@@ -23,6 +28,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
 // Analytics only runs in supported browser environments.
@@ -58,6 +64,15 @@ const OPTIONAL_PRODUCT_DEFAULT_TITLE = "Nuevo producto";
 const OPTIONAL_PRODUCT_DEFAULT_DESCRIPTION = "Completa los datos desde el panel admin.";
 
 let isAdminMode = false;
+const DEFAULT_ALLOWED_ADMIN_EMAILS = [
+  "fernandochuquino@gmail.com",
+  "sebastianchuquinocapa@gmail.com",
+  "marfes.service.peru@gmail.com",
+  "marlonchca3@gmail.com",
+];
+
+let allowedAdminEmails = new Set(DEFAULT_ALLOWED_ADMIN_EMAILS);
+const adminAllowListReadyPromise = loadAllowedAdminEmails();
 
 const productElements = [
   {
@@ -265,6 +280,38 @@ function fileToDataUrl(file) {
   });
 }
 
+function normalizeEmail(value) {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+async function loadAllowedAdminEmails() {
+  try {
+    const adminAuthDocRef = doc(db, "settings", "adminAccess");
+    const adminAuthDoc = await getDoc(adminAuthDocRef);
+
+    if (!adminAuthDoc.exists()) {
+      return;
+    }
+
+    const data = adminAuthDoc.data();
+    const firestoreEmails = Array.isArray(data.allowedEmails) ? data.allowedEmails : [];
+    const sanitizedEmails = firestoreEmails
+      .map((item) => normalizeEmail(item))
+      .filter((item) => Boolean(item));
+
+    if (sanitizedEmails.length > 0) {
+      allowedAdminEmails = new Set(sanitizedEmails);
+    }
+  } catch (error) {
+    console.warn("No se pudo cargar lista de admins desde Firestore:", error);
+  }
+}
+
+function isAllowedAdminUser(user) {
+  const email = normalizeEmail(user && user.email ? user.email : "");
+  return allowedAdminEmails.has(email);
+}
+
 function setAdminMode(enabled) {
   if (!productsAdminEl || !adminEntryBtnEl) {
     return;
@@ -337,10 +384,22 @@ loadProductsData();
 setAdminMode(false);
 setAdminUserPhoto(null);
 
-onAuthStateChanged(auth, (user) => {
-  const isActive = Boolean(user);
+onAuthStateChanged(auth, async (user) => {
+  await adminAllowListReadyPromise;
+
+  const isActive = Boolean(user) && isAllowedAdminUser(user);
+
+  if (user && !isActive) {
+    signOut(auth).catch((error) => {
+      console.warn("No se pudo cerrar sesion de usuario no autorizado:", error);
+    });
+    if (adminErrorEl) {
+      adminErrorEl.textContent = "Este correo no tiene permisos para iniciar sesion";
+    }
+  }
+
   setAdminMode(isActive);
-  setAdminUserPhoto(user);
+  setAdminUserPhoto(isActive ? user : null);
 });
 
 if (menuToggleEl && mainNavEl) {
@@ -393,7 +452,15 @@ if (adminLoginFormEl) {
 if (adminGoogleBtnEl) {
   adminGoogleBtnEl.addEventListener("click", async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      await adminAllowListReadyPromise;
+      const loginResult = await signInWithPopup(auth, googleProvider);
+      if (!isAllowedAdminUser(loginResult.user)) {
+        await signOut(auth);
+        if (adminErrorEl) {
+          adminErrorEl.textContent = "Este correo no tiene permisos para iniciar sesion";
+        }
+        return;
+      }
 
       setAdminMode(true);
       toggleAdminModal(false);
