@@ -10,6 +10,10 @@ import {
   signInWithPopup,
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import {
+  getFunctions,
+  httpsCallable,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBMzzP0U4s22f0V4IxO2av1PrJez3KJwqs",
@@ -24,6 +28,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
+const functions = getFunctions(app, "us-central1");
+const chatbotResponseFn = httpsCallable(functions, "chatbotResponse");
 
 // Analytics only runs in supported browser environments.
 isSupported()
@@ -49,6 +55,14 @@ const adminErrorEl = document.getElementById("admin-error");
 const adminLogoutBtnEl = document.getElementById("admin-logout-btn");
 const productsAdminEl = document.getElementById("products-admin");
 const productsFormEl = document.getElementById("products-form");
+const chatbotLauncherEl = document.getElementById("chatbot-launcher");
+const chatbotPanelEl = document.getElementById("chatbot-panel");
+const chatbotCloseBtnEl = document.getElementById("chatbot-close-btn");
+const chatbotMessagesEl = document.getElementById("chatbot-messages");
+const chatbotFormEl = document.getElementById("chatbot-form");
+const chatbotInputEl = document.getElementById("chatbot-input");
+const chatbotChipEls = document.querySelectorAll(".chatbot-chip");
+const newsGridEl = document.getElementById("news-grid");
 
 const ADMIN_SESSION_KEY = "marfes_admin_active";
 const PRODUCTS_STORAGE_KEY = "marfes_products_data";
@@ -56,6 +70,26 @@ const PRODUCT_PLACEHOLDER_IMAGE = "assets/logo-marfes.svg";
 const OPTIONAL_PRODUCTS_START_INDEX = 2;
 const OPTIONAL_PRODUCT_DEFAULT_TITLE = "Nuevo producto";
 const OPTIONAL_PRODUCT_DEFAULT_DESCRIPTION = "Completa los datos desde el panel admin.";
+const GUARDIAN_API_KEY = "a7916396-ad7f-40aa-868c-cb806888469e";
+const GUARDIAN_API_URL = "https://content.guardianapis.com/search";
+const GUARDIAN_QUERY =
+  'healthcare OR "medical technology" OR "medical devices" OR "medical equipment"';
+const ALLOWED_NEWS_TOPICS = [
+  "healthcare",
+  "medical technology",
+  "medical technologies",
+  "medical device",
+  "medical devices",
+  "medical equipment",
+  "clinical equipment",
+  "hospital equipment",
+];
+const NEWS_LIMIT = 6;
+const NEWS_SUMMARY_MAX = 180;
+const NEWS_LOOKBACK_DAYS = 7;
+
+const CHATBOT_GREETING =
+  "Hola, soy el asistente de Marfes Service. Puedo ayudarte con servicios, productos, horario y contacto.";
 
 let isAdminMode = false;
 
@@ -124,6 +158,362 @@ const productElements = [
 
 if (yearEl) {
   yearEl.textContent = new Date().getFullYear();
+}
+
+function appendChatbotMessage(text, sender) {
+  if (!chatbotMessagesEl) {
+    return;
+  }
+
+  const messageEl = document.createElement("div");
+  messageEl.className = `chatbot-message ${sender}`;
+  messageEl.innerHTML = text;
+  chatbotMessagesEl.appendChild(messageEl);
+  chatbotMessagesEl.scrollTop = chatbotMessagesEl.scrollHeight;
+}
+
+function truncateText(text, maxLength) {
+  if (!text || text.length <= maxLength) {
+    return text;
+  }
+  return `${text.slice(0, maxLength - 1).trim()}...`;
+}
+
+function parseHtmlToText(htmlValue) {
+  if (!htmlValue) {
+    return "";
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlValue, "text/html");
+  return (doc.body.textContent || "").trim();
+}
+
+function isAllowedTopicArticle(article) {
+  const title = (article && article.webTitle ? article.webTitle : "").toLowerCase();
+  const summary = parseHtmlToText(
+    article && article.fields && article.fields.trailText ? article.fields.trailText : "",
+  ).toLowerCase();
+  const fullText = `${title} ${summary}`;
+
+  return ALLOWED_NEWS_TOPICS.some((keyword) => fullText.includes(keyword));
+}
+
+async function translateToSpanish(text) {
+  const cleanText = (text || "").trim();
+  if (!cleanText) {
+    return "";
+  }
+
+  try {
+    const params = new URLSearchParams({
+      client: "gtx",
+      sl: "en",
+      tl: "es",
+      dt: "t",
+      q: cleanText,
+    });
+
+    const response = await fetch(
+      `https://translate.googleapis.com/translate_a/single?${params.toString()}`,
+    );
+    if (!response.ok) {
+      throw new Error(`Translate API respondio con estado ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const chunks = Array.isArray(payload) && Array.isArray(payload[0]) ? payload[0] : [];
+    const translated = chunks
+      .map((chunk) => (Array.isArray(chunk) && typeof chunk[0] === "string" ? chunk[0] : ""))
+      .join("")
+      .trim();
+
+    return translated || cleanText;
+  } catch (error) {
+    console.warn("No se pudo traducir texto al espanol:", error);
+    return cleanText;
+  }
+}
+
+function renderNewsStatus(message) {
+  if (!newsGridEl) {
+    return;
+  }
+
+  newsGridEl.innerHTML = "";
+
+  const card = document.createElement("article");
+  card.className = "news-card reveal";
+
+  const text = document.createElement("p");
+  text.className = "news-status";
+  text.textContent = message;
+
+  card.appendChild(text);
+  newsGridEl.appendChild(card);
+}
+
+function createNewsCard(article, index, translatedTitle, translatedSummary) {
+  const card = document.createElement("article");
+  const delayClass = index % 3 === 0 ? "delay-1" : index % 3 === 1 ? "delay-2" : "delay-3";
+  card.className = `news-card reveal ${delayClass}`;
+
+  const source = document.createElement("p");
+  source.className = "news-source";
+  const publishedAt = article.webPublicationDate
+    ? new Date(article.webPublicationDate).toLocaleDateString("es-PE", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "Reciente";
+  source.textContent = `${article.sectionName || "The Guardian"} · ${publishedAt}`;
+
+  const thumbnailUrl = article.fields && article.fields.thumbnail ? article.fields.thumbnail : "";
+  if (thumbnailUrl) {
+    const thumbnail = document.createElement("img");
+    thumbnail.className = "news-thumb";
+    thumbnail.src = thumbnailUrl;
+    thumbnail.alt = article.webTitle || "Noticia medica";
+    thumbnail.loading = "lazy";
+    card.appendChild(thumbnail);
+  }
+
+  const title = document.createElement("h3");
+  title.textContent = translatedTitle || article.webTitle || "Noticia del sector medico";
+
+  const summary = document.createElement("p");
+  const trailText = parseHtmlToText(article.fields && article.fields.trailText ? article.fields.trailText : "");
+  summary.textContent =
+    truncateText(translatedSummary || trailText, NEWS_SUMMARY_MAX) ||
+    "Consulta la publicacion completa para mas detalles sobre innovacion medica.";
+
+  const link = document.createElement("a");
+  link.className = "news-link";
+  link.href = article.webUrl || "https://www.theguardian.com";
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = "Leer noticia";
+
+  card.appendChild(source);
+  card.appendChild(title);
+  card.appendChild(summary);
+  card.appendChild(link);
+
+  return card;
+}
+
+async function loadGuardianNews() {
+  if (!newsGridEl) {
+    return;
+  }
+
+  renderNewsStatus("Cargando noticias recientes de The Guardian (ultimos 7 dias)...");
+
+  try {
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - NEWS_LOOKBACK_DAYS);
+
+    const params = new URLSearchParams({
+      "api-key": GUARDIAN_API_KEY,
+      q: GUARDIAN_QUERY,
+      "order-by": "newest",
+      "page-size": String(NEWS_LIMIT),
+      "show-fields": "trailText,thumbnail",
+      "from-date": fromDate.toISOString().slice(0, 10),
+      lang: "en",
+    });
+
+    const response = await fetch(`${GUARDIAN_API_URL}?${params.toString()}`);
+    if (!response.ok) {
+      throw new Error(`Guardian API respondio con estado ${response.status}`);
+    }
+
+    const data = await response.json();
+    const articles =
+      data && data.response && Array.isArray(data.response.results)
+        ? data.response.results
+        : [];
+    const filteredArticles = articles.filter(isAllowedTopicArticle).slice(0, NEWS_LIMIT);
+
+    if (!filteredArticles.length) {
+      renderNewsStatus("No se encontraron noticias recientes para equipos medicos, healthcare, medical technology o medical devices.");
+      return;
+    }
+
+    newsGridEl.innerHTML = "";
+    const translatedArticles = await Promise.all(
+      filteredArticles.map(async (article) => {
+        const originalTitle = article.webTitle || "";
+        const originalSummary = parseHtmlToText(
+          article.fields && article.fields.trailText ? article.fields.trailText : "",
+        );
+
+        const [translatedTitle, translatedSummary] = await Promise.all([
+          translateToSpanish(originalTitle),
+          translateToSpanish(originalSummary),
+        ]);
+
+        return {
+          article,
+          translatedTitle,
+          translatedSummary,
+        };
+      }),
+    );
+
+    translatedArticles.forEach(({ article, translatedTitle, translatedSummary }, index) => {
+      newsGridEl.appendChild(createNewsCard(article, index, translatedTitle, translatedSummary));
+    });
+  } catch (error) {
+    console.warn("No se pudo cargar noticias de The Guardian:", error);
+    renderNewsStatus("No se pudieron cargar noticias en este momento. Intenta nuevamente en unos minutos.");
+  }
+}
+
+function openChatbot() {
+  if (!chatbotPanelEl || !chatbotLauncherEl) {
+    return;
+  }
+
+  chatbotPanelEl.hidden = false;
+  chatbotLauncherEl.setAttribute("aria-expanded", "true");
+
+  if (chatbotMessagesEl && chatbotMessagesEl.childElementCount === 0) {
+    appendChatbotMessage(CHATBOT_GREETING, "bot");
+  }
+
+  if (chatbotInputEl) {
+    chatbotInputEl.focus();
+  }
+}
+
+function closeChatbot() {
+  if (!chatbotPanelEl || !chatbotLauncherEl) {
+    return;
+  }
+
+  chatbotPanelEl.hidden = true;
+  chatbotLauncherEl.setAttribute("aria-expanded", "false");
+}
+
+function getChatbotReplyLocal(userText) {
+  const text = userText.toLowerCase();
+
+  if (text.includes("servicio") || text.includes("mantenimiento")) {
+    return "Ofrecemos mantenimiento preventivo, reparación y venta de equipos médicos para clínicas y centros de salud.";
+  }
+
+  if (text.includes("producto") || text.includes("equipo")) {
+    return "Tenemos equipos médicos disponibles y también podemos cotizar soluciones según la necesidad de tu institución.";
+  }
+
+  if (text.includes("whatsapp") || text.includes("contacto") || text.includes("llamar")) {
+    return 'Puedes escribirnos por WhatsApp <a href="https://wa.me/51960129839" target="_blank" rel="noopener noreferrer">aquí</a> o llamarnos al <a href="tel:+51960129839">+51 960 129 839</a>.';
+  }
+
+  if (text.includes("horario") || text.includes("atención") || text.includes("atencion")) {
+    return "Podemos coordinar atención según tu necesidad. Escríbenos y te respondemos lo antes posible.";
+  }
+
+  if (text.includes("garant") || text.includes("soporte")) {
+    return "Brindamos soporte técnico especializado y seguimiento para cada equipo según el servicio solicitado.";
+  }
+
+  return "Puedo ayudarte con servicios, productos, garantía y contacto. Si quieres, escribe 'servicios' o 'WhatsApp'.";
+}
+
+async function getChatbotReply(userText) {
+  try {
+    // Call the Cloud Function with the user message
+    const result = await chatbotResponseFn({ message: userText });
+
+    if (result.data && result.data.success) {
+      return result.data.message;
+    } else if (result.data && result.data.message) {
+      // Return error message from function
+      return result.data.message;
+    }
+  } catch (error) {
+    console.warn("Error llamando Cloud Function:", error);
+    // Fall back to local keyword matching if Cloud Function fails
+  }
+
+  // Fallback to local keyword matching
+  return getChatbotReplyLocal(userText);
+}
+
+async function sendChatbotMessage(messageText) {
+  const text = messageText.trim();
+  if (!text) {
+    return;
+  }
+
+  appendChatbotMessage(text, "user");
+
+  // Show loading indicator
+  const loadingMessageEl = document.createElement("div");
+  loadingMessageEl.className = "chatbot-message bot";
+  loadingMessageEl.innerHTML = "Escribiendo... 💭";
+  loadingMessageEl.id = "chatbot-loading-msg";
+  if (chatbotMessagesEl) {
+    chatbotMessagesEl.appendChild(loadingMessageEl);
+    chatbotMessagesEl.scrollTop = chatbotMessagesEl.scrollHeight;
+  }
+
+  // Get AI response
+  const reply = await getChatbotReply(text);
+
+  // Remove loading indicator
+  if (loadingMessageEl && loadingMessageEl.parentNode) {
+    loadingMessageEl.remove();
+  }
+
+  appendChatbotMessage(reply, "bot");
+}
+
+if (chatbotLauncherEl && chatbotPanelEl && chatbotMessagesEl) {
+  chatbotLauncherEl.addEventListener("click", () => {
+    const shouldOpen = chatbotPanelEl.hidden;
+    if (shouldOpen) {
+      openChatbot();
+    } else {
+      closeChatbot();
+    }
+  });
+
+  if (chatbotCloseBtnEl) {
+    chatbotCloseBtnEl.addEventListener("click", closeChatbot);
+  }
+
+  chatbotChipEls.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const topic = chip.getAttribute("data-chat-topic") || "";
+      const quickReplies = {
+        servicios: "¿Qué servicios ofrecen?",
+        productos: "¿Qué productos tienen disponibles?",
+        whatsapp: "Quiero contacto por WhatsApp",
+        horario: "¿Cuál es su horario de atención?",
+      };
+
+      openChatbot();
+      sendChatbotMessage(quickReplies[topic] || chip.textContent || "");
+    });
+  });
+
+  if (chatbotFormEl && chatbotInputEl) {
+    chatbotFormEl.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const message = chatbotInputEl.value;
+      chatbotInputEl.value = "";
+      chatbotInputEl.disabled = true;
+      await sendChatbotMessage(message);
+      chatbotInputEl.disabled = false;
+      chatbotInputEl.focus();
+    });
+  }
+
+  appendChatbotMessage(CHATBOT_GREETING, "bot");
 }
 
 function getProductsFromDom() {
@@ -334,6 +724,7 @@ if (adminModalEl) {
 }
 
 loadProductsData();
+loadGuardianNews();
 setAdminMode(false);
 setAdminUserPhoto(null);
 

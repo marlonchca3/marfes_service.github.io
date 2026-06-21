@@ -165,60 +165,13 @@
       <section class="section news" id="noticias">
         <div class="container">
           <div class="section-head reveal">
-            <p class="eyebrow">Revistas del sector</p>
-            <h2>Noticias destacadas de equipos médicos</h2>
+            <p class="eyebrow">Actualidad global</p>
+            <h2>Noticias recientes de equipos medicos, healthcare, medical technology y medical devices</h2>
           </div>
 
-          <div class="news-grid">
-            <article class="news-card reveal delay-1">
-              <p class="news-source">Medical Device Network</p>
-              <h3>Tendencias de innovación en dispositivos médicos</h3>
-              <p>
-                Análisis del mercado global sobre nuevas tecnologías, regulación
-                y crecimiento del sector biomédico.
-              </p>
-              <a
-                class="news-link"
-                href="https://www.medicaldevice-network.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Ver publicación
-              </a>
-            </article>
-
-            <article class="news-card reveal delay-2">
-              <p class="news-source">Medical Design & Outsourcing</p>
-              <h3>Diseño, ingeniería y manufactura de equipos clínicos</h3>
-              <p>
-                Cobertura especializada sobre desarrollo de producto, calidad
-                técnica y nuevas soluciones para hospitales.
-              </p>
-              <a
-                class="news-link"
-                href="https://www.medicaldesignandoutsourcing.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Ver publicación
-              </a>
-            </article>
-
-            <article class="news-card reveal delay-3">
-              <p class="news-source">Medgadget</p>
-              <h3>Actualidad en tecnología médica aplicada</h3>
-              <p>
-                Noticias y reportes sobre equipos biomédicos, diagnóstico y
-                herramientas de soporte para clínicas y centros de salud.
-              </p>
-              <a
-                class="news-link"
-                href="https://www.medgadget.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Ver publicación
-              </a>
+          <div class="news-grid" id="news-grid" aria-live="polite">
+            <article class="news-card reveal">
+              <p class="news-status">Cargando noticias...</p>
             </article>
           </div>
         </div>
@@ -456,6 +409,51 @@
         <p>© <span id="year"></span> Marfes Service. Todos los derechos reservados.</p>
       </div>
     </footer>
+
+    <div class="chatbot" id="chatbot">
+      <button
+        class="chatbot-launcher"
+        type="button"
+        id="chatbot-launcher"
+        aria-label="Abrir chatbot"
+        aria-controls="chatbot-panel"
+        aria-expanded="false"
+      >
+        <span class="chatbot-launcher-icon" aria-hidden="true">💬</span>
+        <span class="chatbot-launcher-text">Chat</span>
+      </button>
+
+      <section class="chatbot-panel" id="chatbot-panel" aria-label="Chatbot de Marfes" hidden>
+        <header class="chatbot-header">
+          <div>
+            <p class="chatbot-title">Asistente Marfes</p>
+            <p class="chatbot-subtitle">Respuestas rápidas sobre servicios y contacto.</p>
+          </div>
+          <button class="chatbot-close" type="button" id="chatbot-close-btn" aria-label="Cerrar chatbot">
+            ×
+          </button>
+        </header>
+
+        <div class="chatbot-messages" id="chatbot-messages" aria-live="polite"></div>
+
+        <div class="chatbot-quick-actions" aria-label="Respuestas rápidas">
+          <button type="button" class="chatbot-chip" data-chat-topic="servicios">Servicios</button>
+          <button type="button" class="chatbot-chip" data-chat-topic="productos">Productos</button>
+          <button type="button" class="chatbot-chip" data-chat-topic="whatsapp">WhatsApp</button>
+          <button type="button" class="chatbot-chip" data-chat-topic="horario">Horario</button>
+        </div>
+
+        <form class="chatbot-form" id="chatbot-form">
+          <input
+            id="chatbot-input"
+            type="text"
+            placeholder="Escribe tu consulta..."
+            aria-label="Escribe tu consulta"
+          />
+          <button class="btn btn-primary chatbot-send" type="submit">Enviar</button>
+        </form>
+      </section>
+    </div>
 
     <a
       class="floating-whatsapp"
