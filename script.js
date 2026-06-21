@@ -94,7 +94,6 @@ const NEWS_LIMIT = 6;
 const NEWS_SUMMARY_MAX = 180;
 const NEWS_LOOKBACK_DAYS = 7;
 const GUARDIAN_REQUEST_TIMEOUT_MS = 8000;
-const TRANSLATE_REQUEST_TIMEOUT_MS = 1800;
 
 const CHATBOT_GREETING =
   "Hola, soy el asistente de Marfes Service. Puedo ayudarte con servicios, productos, horario y contacto.";
@@ -216,43 +215,6 @@ function isAllowedTopicArticle(article) {
   return ALLOWED_NEWS_TOPICS.some((keyword) => fullText.includes(keyword));
 }
 
-async function translateToSpanish(text) {
-  const cleanText = (text || "").trim();
-  if (!cleanText) {
-    return "";
-  }
-
-  try {
-    const params = new URLSearchParams({
-      client: "gtx",
-      sl: "en",
-      tl: "es",
-      dt: "t",
-      q: cleanText,
-    });
-
-    const response = await fetchWithTimeout(
-      `https://translate.googleapis.com/translate_a/single?${params.toString()}`,
-      TRANSLATE_REQUEST_TIMEOUT_MS,
-    );
-    if (!response.ok) {
-      throw new Error(`Translate API respondio con estado ${response.status}`);
-    }
-
-    const payload = await response.json();
-    const chunks = Array.isArray(payload) && Array.isArray(payload[0]) ? payload[0] : [];
-    const translated = chunks
-      .map((chunk) => (Array.isArray(chunk) && typeof chunk[0] === "string" ? chunk[0] : ""))
-      .join("")
-      .trim();
-
-    return translated || cleanText;
-  } catch (error) {
-    console.warn("No se pudo traducir texto al espanol:", error);
-    return cleanText;
-  }
-}
-
 async function fetchWithTimeout(url, timeoutMs) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -282,7 +244,7 @@ function renderNewsStatus(message) {
   newsGridEl.appendChild(card);
 }
 
-function createNewsCard(article, index, translatedTitle, translatedSummary) {
+function createNewsCard(article, index, originalTitle, originalSummary) {
   const card = document.createElement("article");
   const delayClass = index % 3 === 0 ? "delay-1" : index % 3 === 1 ? "delay-2" : "delay-3";
   card.className = `news-card reveal ${delayClass}`;
@@ -310,13 +272,12 @@ function createNewsCard(article, index, translatedTitle, translatedSummary) {
 
   const title = document.createElement("h3");
   title.className = "news-title";
-  title.textContent = translatedTitle || article.webTitle || "Noticia del sector medico";
+  title.textContent = originalTitle || article.webTitle || "Noticia del sector medico";
 
   const summary = document.createElement("p");
   summary.className = "news-summary";
-  const trailText = parseHtmlToText(article.fields && article.fields.trailText ? article.fields.trailText : "");
   summary.textContent =
-    truncateText(translatedSummary || trailText, NEWS_SUMMARY_MAX) ||
+    truncateText(originalSummary, NEWS_SUMMARY_MAX) ||
     "Consulta la publicacion completa para mas detalles sobre innovacion medica.";
 
   const link = document.createElement("a");
@@ -382,36 +343,6 @@ async function loadGuardianNews() {
       );
       newsGridEl.appendChild(createNewsCard(article, index, article.webTitle || "", originalSummary));
     });
-
-    // Translate titles/summaries in background without blocking initial render.
-    void Promise.allSettled(
-      filteredArticles.map(async (article, index) => {
-        const cardEl = newsGridEl.children[index];
-        if (!cardEl) {
-          return;
-        }
-
-        const titleEl = cardEl.querySelector(".news-title");
-        const summaryEl = cardEl.querySelector(".news-summary");
-        const originalTitle = article.webTitle || "";
-        const originalSummary = parseHtmlToText(
-          article.fields && article.fields.trailText ? article.fields.trailText : "",
-        );
-
-        const [translatedTitle, translatedSummary] = await Promise.all([
-          translateToSpanish(originalTitle),
-          translateToSpanish(originalSummary),
-        ]);
-
-        if (titleEl && translatedTitle) {
-          titleEl.textContent = translatedTitle;
-        }
-
-        if (summaryEl && translatedSummary) {
-          summaryEl.textContent = truncateText(translatedSummary, NEWS_SUMMARY_MAX);
-        }
-      }),
-    );
   } catch (error) {
     console.warn("No se pudo cargar noticias de The Guardian:", error);
     renderNewsStatus("No se pudieron cargar noticias en este momento. Intenta nuevamente en unos minutos.");
