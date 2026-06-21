@@ -2,6 +2,10 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /settings/adminAccess {
+      allow read: if true;
+    }
+
     match /{document=**} {
       // Deny by default until app-specific rules are defined.
       allow read, write: if false;
